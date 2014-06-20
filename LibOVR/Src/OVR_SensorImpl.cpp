@@ -870,7 +870,7 @@ bool SensorDeviceImpl::SetMagCalibrationReport(const MagCalibrationReport &data)
     // time stamp the calibration
     char time_str[64];
    
-#ifdef OVR_OS_WIN32
+#if defined(OVR_OS_WIN32) && defined(OVR_CC_MSVC)
     struct tm caltime;
     time_t now = time(0);
     localtime_s(&caltime, &now);
@@ -1074,7 +1074,7 @@ bool SensorDeviceImpl::GetMagCalibrationReport(MagCalibrationReport* data)
                                     tm ct;
                                     memset(&ct, 0, sizeof(tm));
                             
-#ifdef OVR_OS_WIN32
+#if defined(OVR_OS_WIN32) && defined(OVR_CC_MSVC)
                                     struct tm nowtime;
                                     localtime_s(&nowtime, &now);
                                     ct.tm_isdst = nowtime.tm_isdst;

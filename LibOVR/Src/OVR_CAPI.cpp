@@ -670,7 +670,11 @@ OVR_EXPORT ovrEyeRenderDesc ovrHmd_GetRenderDesc(ovrHmd hmd,
 
 
 
-#define OVR_OFFSET_OF(s, field) ((size_t)&((s*)0)->field)
+#if defined(OVR_CC_MSVC)
+    #define OVR_OFFSET_OF(s, field) ((size_t)&((s*)0)->field)
+#else
+    #define OVR_OFFSET_OF(s, field) (1)
+#endif
 
 
 

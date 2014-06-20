@@ -32,6 +32,11 @@ limitations under the License.
 
 #include <dbt.h>
 
+#ifndef DEVICE_NOTIFY_ALL_INTERFACE_CLASSES
+// Normally defined in winuser.h
+#define DEVICE_NOTIFY_ALL_INTERFACE_CLASSES 0x00000004
+#endif
+
 namespace OVR { namespace Win32 {
 
 static TCHAR windowClassName[] = TEXT("LibOVR_DeviceStatus_WindowClass");

@@ -821,7 +821,7 @@ unsigned WINAPI Thread_Win32StartFn(void * phandle)
 
     // Ensure that ThreadId is assigned once thread is running, in case
     // beginthread hasn't filled it in yet.
-    pthread->IdValue = (ThreadId)::GetCurrentThreadId();
+    pthread->IdValue = (ThreadId)(intptr_t)::GetCurrentThreadId(); // should be: typedef intptr_t ThreadId;
 
     DWORD       result = pthread->PRun();
     // Signal the thread as done and release it atomically.
@@ -953,7 +953,8 @@ bool Thread::MSleep(unsigned msecs)
 
 void Thread::SetThreadName( const char* name )
 {
-#if !defined(OVR_BUILD_SHIPPING) || defined(OVR_BUILD_PROFILING)
+    // MinGW does not support SEH exceptions, hence CPP: && defined(OVR_CC_MSVC)
+#if ( !defined(OVR_BUILD_SHIPPING) || defined(OVR_BUILD_PROFILING) ) && defined(OVR_CC_MSVC) 
     // Looks ugly, but it is the recommended way to name a thread.
     typedef struct tagTHREADNAME_INFO {
         DWORD dwType;     // Must be 0x1000
@@ -995,7 +996,7 @@ int  Thread::GetCPUCount()
 // comparison purposes.
 ThreadId GetCurrentThreadId()
 {
-    return (ThreadId)::GetCurrentThreadId();
+    return (ThreadId)(intptr_t)::GetCurrentThreadId(); // should be: typedef intptr_t ThreadId;
 }
 
 } // OVR
