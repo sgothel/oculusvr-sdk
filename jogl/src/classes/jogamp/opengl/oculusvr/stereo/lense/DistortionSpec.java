@@ -87,7 +87,7 @@
  */
 package jogamp.opengl.oculusvr.stereo.lense;
 
-import javax.media.nativewindow.util.DimensionImmutable;
+import com.jogamp.nativewindow.util.DimensionImmutable;
 
 import jogamp.opengl.util.stereo.GenericStereoDevice;
 
