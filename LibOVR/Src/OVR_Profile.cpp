@@ -725,7 +725,7 @@ bool ProfileManager::SetDefaultUser(const DeviceBase* device, const char* user)
     String product;
     String serial;
     if (!GetDeviceTags(device, product, serial))
-        return NULL;
+        return false;
 
     const char* product_str = product.IsEmpty() ? NULL : product.ToCStr();
     const char* serial_str = serial.IsEmpty() ? NULL : serial.ToCStr();
