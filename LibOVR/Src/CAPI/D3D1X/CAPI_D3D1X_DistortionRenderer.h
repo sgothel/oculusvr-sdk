@@ -5,16 +5,16 @@ Content     :   Experimental distortion renderer
 Created     :   November 11, 2013
 Authors     :   Volga Aksoy
 
-Copyright   :   Copyright 2014 Oculus VR, Inc. All Rights reserved.
+Copyright   :   Copyright 2014 Oculus VR, LLC All Rights reserved.
 
-Licensed under the Oculus VR Rift SDK License Version 3.1 (the "License"); 
+Licensed under the Oculus VR Rift SDK License Version 3.2 (the "License"); 
 you may not use the Oculus VR Rift SDK except in compliance with the License, 
 which is provided at the time of installation or download, or which 
 otherwise accompanies this software in either electronic or hard copy form.
 
 You may obtain a copy of the License at
 
-http://www.oculusvr.com/licenses/LICENSE-3.1 
+http://www.oculusvr.com/licenses/LICENSE-3.2 
 
 Unless required by applicable law or agreed to in writing, the Oculus VR SDK 
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -56,12 +56,11 @@ public:
 
     // ***** Public DistortionRenderer interface
 
-    virtual bool Initialize(const ovrRenderAPIConfig* apiConfig,
-                            unsigned distortionCaps);
+    virtual bool Initialize(const ovrRenderAPIConfig* apiConfig) OVR_OVERRIDE;
 
-    virtual void SubmitEye(int eyeId, ovrTexture* eyeTexture);
+    virtual void SubmitEye(int eyeId, const ovrTexture* eyeTexture);
 
-    virtual void EndFrame(bool swapBuffers, unsigned char* latencyTesterDrawColor, unsigned char* latencyTester2DrawColor);
+    virtual void EndFrame(bool swapBuffers);
 
     // TBD: Make public?
     void         WaitUntilGpuIdle();
@@ -76,13 +75,59 @@ protected:
 	{
 	public:
 		GraphicsState(ID3D1xDeviceContext* context);
+		virtual ~GraphicsState();
+		virtual void clearMemory();
 		virtual void Save();
 		virtual void Restore();
 
 	protected:
-		ID3D1xRasterizerState* rasterizerState;
-		ID3D1xSamplerState* samplerStates[8];
 		ID3D1xDeviceContext* context;
+		BOOL memoryCleared;
+
+		ID3D1xRasterizerState* rasterizerState;
+		ID3D1xInputLayout* inputLayoutState;
+
+		ID3D1xShaderResourceView*   psShaderResourceState[D3D1x_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
+		ID3D1xSamplerState*         psSamplerStates[D3D1x_COMMONSHADER_SAMPLER_SLOT_COUNT];
+		ID3D1xBuffer*               psConstantBuffersState[D3D1x_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT];
+
+        ID3D1xShaderResourceView*   vsShaderResourceState[D3D1x_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
+		ID3D1xSamplerState*         vsSamplerStates[D3D1x_COMMONSHADER_SAMPLER_SLOT_COUNT];
+		ID3D1xBuffer*               vsConstantBuffersState[D3D1x_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT];
+
+#if (OVR_D3D_VERSION == 11)
+        ID3D1xShaderResourceView*   csShaderResourceState[D3D1x_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
+		ID3D1xSamplerState*         csSamplerStates[D3D1x_COMMONSHADER_SAMPLER_SLOT_COUNT];
+		ID3D1xBuffer*               csConstantBuffersState[D3D1x_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT];
+		ID3D1xUnorderedAccessView*  csUnorderedAccessViewState[D3D1x_SIMULTANEOUS_RENDER_TARGET_COUNT];
+#endif
+
+		ID3D1xRenderTargetView* renderTargetViewState[D3D1x_SIMULTANEOUS_RENDER_TARGET_COUNT];
+		ID3D1xDepthStencilView* depthStencilViewState;
+
+		ID3D1xBlendState* omBlendState;
+		FLOAT omBlendFactorState[4];
+		UINT omSampleMaskState;
+
+		D3D1x_PRIMITIVE_TOPOLOGY primitiveTopologyState;
+
+		ID3D1xBuffer* iaIndexBufferPointerState;
+		DXGI_FORMAT iaIndexBufferFormatState;
+		UINT iaIndexBufferOffsetState;
+
+		ID3D1xBuffer* iaVertexBufferPointersState[D3D1x_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+		UINT iaVertexBufferStridesState[D3D1x_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+		UINT iaVertexBufferOffsetsState[D3D1x_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+
+		ID3D1xPixelShader* currentPixelShader;
+		ID3D1xVertexShader* currentVertexShader;
+		ID3D1xGeometryShader* currentGeometryShader;
+#if (OVR_D3D_VERSION == 11)
+		ID3D11HullShader* currentHullShader;
+		ID3D11DomainShader* currentDomainShader;
+		ID3D11ComputeShader* currentComputeShader;
+#endif
+
 	};
 
 private:
@@ -90,6 +135,7 @@ private:
     void initBuffersAndShaders();
     void initShaders();
     void initFullscreenQuad();
+	void initOverdrive();
     void destroy();
 
     void setViewport(const Recti& vp);
@@ -100,6 +146,8 @@ private:
                           Matrix4f* viewMatrix, int offset, int count,
                           PrimitiveType rprim);
 
+    void renderEndFrame();
+
     void createDrawQuad();
     void renderLatencyQuad(unsigned char* latencyTesterDrawColor);
     void renderLatencyPixel(unsigned char* latencyTesterPixelColor);
@@ -108,22 +156,28 @@ private:
     ID3D1xSamplerState* getSamplerState(int sm);
 
     
-    // TBD: Should we be using oe from RState instead?
-    unsigned            DistortionCaps;
+    //// TBD: Should we be using oe from RState instead?
+    //unsigned            DistortionCaps;
+
+    // Back buffer is properly set as an SRGB format?
+    bool                SrgbBackBuffer;
 
     // D3DX device and utility variables.
     RenderParams        RParams;    
     Ptr<Texture>        pEyeTextures[2];
-	
+
     // U,V scale and offset needed for timewarp.
     ovrVector2f         UVScaleOffset[2][2];
     ovrSizei            EyeTextureSize[2];
     ovrRecti            EyeRenderViewport[2];
 
+	Ptr<Texture>        pOverdriveTextures[NumOverdriveTextures];
+
     //Ptr<Buffer>         mpFullScreenVertexBuffer;
 
 	Ptr<Buffer>         DistortionMeshVBs[2];    // one per-eye
 	Ptr<Buffer>         DistortionMeshIBs[2];    // one per-eye
+	Ptr<Buffer>         DistortionPinBuffer[2];  // one per-eye
 
 	Ptr<ShaderSet>      DistortionShader;
 	Ptr<ID3D1xInputLayout> DistortionVertexIL;
