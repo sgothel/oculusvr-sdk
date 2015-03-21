@@ -40,7 +40,7 @@ limitations under the License.
 #ifdef OVR_OS_WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
-#include <Shlobj.h>
+#include <shlobj.h>
 #elif defined(OVR_OS_MS) // Other Microsoft OSs
 // Nothing, thanks.
 #else
