@@ -88,17 +88,17 @@
 package jogamp.opengl.oculusvr.stereo.lense;
 
 import jogamp.opengl.util.stereo.DistortionMesh;
-import jogamp.opengl.util.stereo.GenericStereoDevice;
 import jogamp.opengl.util.stereo.ScaleAndOffset2D;
 import jogamp.opengl.util.stereo.DistortionMesh.DistortionVertex;
 
 import com.jogamp.opengl.math.FloatUtil;
 import com.jogamp.opengl.math.VectorUtil;
 import com.jogamp.opengl.util.stereo.EyeParameter;
+import com.jogamp.opengl.util.stereo.generic.GenericStereoDeviceConfig;
 
 public class DistortionMeshProducer implements DistortionMesh.Producer {
     private DistortionSpec[] distortionSpecs;
-    private GenericStereoDevice.Config deviceConfig;
+    private GenericStereoDeviceConfig deviceConfig;
     private final float[] eyeReliefInMeters;
 
     public DistortionMeshProducer() {
@@ -108,14 +108,13 @@ public class DistortionMeshProducer implements DistortionMesh.Producer {
     }
 
     @Override
-    public void init(final GenericStereoDevice.Config deviceConfig, final float[] eyeReliefInMeters) {
-        if( this.deviceConfig != deviceConfig ||
-            this.eyeReliefInMeters[0] != eyeReliefInMeters[0] ||
-            this.eyeReliefInMeters[1] != eyeReliefInMeters[1] ) {
-            System.arraycopy(eyeReliefInMeters, 0, this.eyeReliefInMeters, 0, 2);
-            this.distortionSpecs = DistortionSpec.CalculateDistortionSpec(deviceConfig, eyeReliefInMeters);
-            this.deviceConfig = deviceConfig;
+    public void init(final GenericStereoDeviceConfig deviceConfig, final float[] eyeReliefInMeters) throws IllegalStateException {
+        if( null != this.deviceConfig ) {
+            throw new IllegalStateException("Already initialized");
         }
+        System.arraycopy(eyeReliefInMeters, 0, this.eyeReliefInMeters, 0, 2);
+        this.distortionSpecs = DistortionSpec.CalculateDistortionSpec(deviceConfig, eyeReliefInMeters);
+        this.deviceConfig = deviceConfig;
     }
 
     // Pow2 for the Morton order to work!
@@ -164,6 +163,7 @@ public class DistortionMeshProducer implements DistortionMesh.Producer {
         VectorUtil.scaleVec2(resultB, tanEyeAngleDistorted, distortionScales[2]);
     }
 
+    @Override
     public final DistortionMesh create(final EyeParameter eyeParam, final int distortionBits) {
         // Find the mapping from TanAngle space to target NDC space.
         final ScaleAndOffset2D  eyeToSourceNDC = new ScaleAndOffset2D(eyeParam.fovhv);

@@ -88,10 +88,8 @@
 package jogamp.opengl.oculusvr.stereo.lense;
 
 import com.jogamp.nativewindow.util.DimensionImmutable;
-
-import jogamp.opengl.util.stereo.GenericStereoDevice;
-
 import com.jogamp.opengl.math.VectorUtil;
+import com.jogamp.opengl.util.stereo.generic.GenericStereoDeviceConfig;
 
 public class DistortionSpec {
     public DistortionSpec(final LensConfig lens) {
@@ -109,7 +107,7 @@ public class DistortionSpec {
     final float[] tanEyeAngleScale;
     final float[] lensCenter;
 
-    public static DistortionSpec[] CalculateDistortionSpec (final GenericStereoDevice.Config deviceConfig, final float[] eyeReliefInMeters) {
+    public static DistortionSpec[] CalculateDistortionSpec (final GenericStereoDeviceConfig deviceConfig, final float[] eyeReliefInMeters) {
         final DistortionSpec[] result = new DistortionSpec[2];
         /// FIXME: Add 'pluggable' lense configuration
         final LensConfig[] lensConfig = LensConfig.GenerateLensConfigFromEyeRelief(eyeReliefInMeters, LensConfig.DistortionEquation.CatmullRom10);
@@ -119,7 +117,7 @@ public class DistortionSpec {
     }
 
 
-    private static DistortionSpec CalculateDistortionSpec (final GenericStereoDevice.Config deviceConfig, final int eyeName,
+    private static DistortionSpec CalculateDistortionSpec (final GenericStereoDeviceConfig deviceConfig, final int eyeName,
                                                            final float eyeReliefInMeters, final LensConfig lensConfig) {
         // From eye relief, IPD and device characteristics, we get the distortion mapping.
         // This distortion does the following things:
