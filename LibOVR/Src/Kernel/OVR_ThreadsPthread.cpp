@@ -5,16 +5,16 @@ Content     :
 Created     :   
 Notes       : 
 
-Copyright   :   Copyright 2014 Oculus VR, Inc. All Rights reserved.
+Copyright   :   Copyright 2014 Oculus VR, LLC All Rights reserved.
 
-Licensed under the Oculus VR Rift SDK License Version 3.1 (the "License"); 
+Licensed under the Oculus VR Rift SDK License Version 3.2 (the "License"); 
 you may not use the Oculus VR Rift SDK except in compliance with the License, 
 which is provided at the time of installation or download, or which 
 otherwise accompanies this software in either electronic or hard copy form.
 
 You may obtain a copy of the License at
 
-http://www.oculusvr.com/licenses/LICENSE-3.1 
+http://www.oculusvr.com/licenses/LICENSE-3.2 
 
 Unless required by applicable law or agreed to in writing, the Oculus VR SDK 
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,10 +33,20 @@ limitations under the License.
 #include "OVR_Log.h"
 
 #include <pthread.h>
+#include <sched.h>
 #include <time.h>
 #include <unistd.h>
 #include <sys/time.h>
 #include <errno.h>
+
+#if defined(OVR_OS_MAC) || defined(OVR_OS_BSD)
+    #include <sys/sysctl.h>
+    #include <sys/param.h>
+    #if !defined(OVR_OS_MAC)
+        #include <pthread_np.h>
+    #endif
+#endif
+    
 
 
 namespace OVR {
@@ -127,9 +137,9 @@ void MutexImpl::Unlock(Mutex* pmutex)
     OVR_UNUSED(pmutex);
     OVR_ASSERT(pthread_self() == LockedBy && LockCount > 0);
 
-    unsigned lockCount;
+    //unsigned lockCount;
     LockCount--;
-    lockCount = LockCount;
+    //lockCount = LockCount;
 
     pthread_mutex_unlock(&SMutex);
 }
@@ -619,6 +629,48 @@ Thread::ThreadState Thread::GetThreadState() const
         return Running;    
     return NotRunning;
 }
+
+// Join thread
+bool Thread::Join(int maxWaitMs) const
+{
+    // If polling,
+    if (maxWaitMs == 0)
+    {
+        // Just return if finished
+        return IsFinished();
+    }
+    // If waiting forever,
+    else if (maxWaitMs > 0)
+    {
+        UInt32 t0 = Timer::GetTicksMs();
+
+        while (!IsFinished())
+        {
+            UInt32 t1 = Timer::GetTicksMs();
+
+            // If the wait has expired,
+            int delta = (int)(t1 - t0);
+            if (delta >= maxWaitMs)
+            {
+                return false;
+            }
+
+            Thread::MSleep(10);
+        }
+
+        return true;
+    }
+    else
+    {
+        while (!IsFinished())
+        {
+            pthread_join(ThreadHandle, NULL);
+        }
+    }
+
+    return true;
+}
+
 /*
 static const char* mapsched_policy(int policy)
 {
@@ -662,10 +714,86 @@ pthread_attr_t Thread::Attr;
 
 /* static */
 int Thread::GetOSPriority(ThreadPriority p)
-//static inline int MapToSystemPrority(Thread::ThreadPriority p)
 {
     OVR_UNUSED(p);
     return -1;
+}
+
+/* static */
+Thread::ThreadPriority Thread::GetOVRPriority(int osPriority)
+{
+    #if defined(OVR_OS_LINUX)
+        return (ThreadPriority)(Thread::NormalPriority - osPriority); // This works for both SCHED_OTHER, SCHED_RR, and SCHED_FIFO.
+    #else
+        // Apple priorities are such that the min is a value less than the max.
+        static int minPriority = sched_get_priority_min(SCHED_FIFO); // We don't have a means to pass a policy type to this function.
+        static int maxPriority = sched_get_priority_max(SCHED_FIFO);
+
+        return (ThreadPriority)(Thread::NormalPriority - (osPriority - ((minPriority + maxPriority) / 2)));
+    #endif
+}
+
+
+Thread::ThreadPriority Thread::GetPriority()
+{
+    int         policy;
+    sched_param param;
+
+    int result = pthread_getschedparam(ThreadHandle, &policy, &param);
+
+    if(result == 0)
+    {
+        #if !defined(OVR_OS_LINUX)
+            if(policy == SCHED_OTHER)
+            {
+                return Thread::NormalPriority; //SCHED_OTHER allows only normal priority on BSD-style Unix and Mac OS X.
+            }
+        #endif
+
+        return GetOVRPriority(param.sched_priority);
+    }
+
+    return Thread::NormalPriority;
+}
+
+/* static */
+Thread::ThreadPriority Thread::GetCurrentPriority()
+{
+    int         policy;
+    sched_param param;
+    pthread_t   currentThreadId = pthread_self();
+
+    int result = pthread_getschedparam(currentThreadId, &policy, &param);
+
+    if(result == 0)
+    {
+        #if !defined(OVR_OS_LINUX)
+            if(policy == SCHED_OTHER)
+            {
+                return Thread::NormalPriority; //SCHED_OTHER allows only normal priority on BSD-style Unix and Mac OS X.
+            }
+        #endif
+
+        return GetOVRPriority(param.sched_priority);
+    }
+
+    return Thread::NormalPriority;
+}
+
+
+bool Thread::SetPriority(ThreadPriority)
+{
+    // We currently fail. To do: add code to support this via pthread_getschedparam/pthread_attr_setschedparam
+    // This won't work unless using SCHED_FIFO or SCHED_RR anyway, which require root privileges.
+    return false;
+}
+
+/* static */
+bool Thread::SetCurrentPriority(ThreadPriority)
+{
+    // We currently fail. To do: add code to support this via pthread_getschedparam/pthread_attr_setschedparam
+    // This won't work unless using SCHED_FIFO or SCHED_RR anyway, which require root privileges.
+    return false;
 }
 
 bool    Thread::Start(ThreadState initialState)
@@ -779,9 +907,78 @@ bool    Thread::MSleep(unsigned msecs)
 /* static */
 int     Thread::GetCPUCount()
 {
-    return 1;
+    #if defined(OVR_OS_MAC) || defined(OVR_OS_BSD)
+        // http://developer.apple.com/mac/library/documentation/Darwin/Reference/ManPages/man3/sysctlbyname.3.html
+        int    cpuCount = 0;
+        size_t len = sizeof(cpuCount);
+
+        if(sysctlbyname("hw.logicalcpu", &cpuCount, &len, NULL, 0) != 0) 
+            cpuCount = 1;
+
+        return cpuCount;
+
+    #else // Linux, Android
+
+        // Alternative: read /proc/cpuinfo
+        #ifdef _SC_NPROCESSORS_ONLN
+            return (int)sysconf(_SC_NPROCESSORS_ONLN);
+        #else
+            return 1;
+        #endif
+    #endif
 }
 
+
+void Thread::SetThreadName( const char* name )
+{
+    #if defined (OVR_OS_APPLE)
+        if(ThreadHandle == pthread_self())
+            pthread_setname_np(name);
+        // Else there's nothing we can do.
+    #else
+        if(ThreadHandle != 0)
+            pthread_setname_np(ThreadHandle, name);
+        // Else we can possibly save this name and set it later when the thread starts.
+    #endif
 }
+
+
+void Thread::SetThreadName(const char* name, ThreadId threadId)
+{
+    #if defined (OVR_OS_APPLE)
+        if(pthread_equal((pthread_t)threadId, pthread_self()))
+            pthread_setname_np(name);
+        // Else there's no way to set the name of another thread.
+    #else
+        pthread_setname_np((pthread_t)threadId, name);
+    #endif
+}
+
+
+void Thread::SetCurrentThreadName(const char* name)
+{
+    #if defined (OVR_OS_APPLE)
+        pthread_setname_np(name);
+    #else
+        pthread_setname_np(pthread_self(), name);
+    #endif
+}
+
+
+void Thread::GetThreadName(char* name, size_t nameCapacity, ThreadId threadId)
+{
+    name[0] = 0;
+    pthread_getname_np((pthread_t)threadId, name, nameCapacity);
+}
+
+
+void Thread::GetCurrentThreadName(char* name, size_t nameCapacity)
+{
+    name[0] = 0;
+    pthread_getname_np(pthread_self(), name, nameCapacity);
+}
+
+
+} // namespace OVR
 
 #endif  // OVR_ENABLE_THREADS

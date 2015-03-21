@@ -5,16 +5,16 @@ Content     :   D3DX10 utility classes for rendering
 Created     :   September 10, 2012
 Authors     :   Andrew Reisse
 
-Copyright   :   Copyright 2014 Oculus VR, Inc. All Rights reserved.
+Copyright   :   Copyright 2014 Oculus VR, LLC All Rights reserved.
 
-Licensed under the Oculus VR Rift SDK License Version 3.1 (the "License"); 
+Licensed under the Oculus VR Rift SDK License Version 3.2 (the "License"); 
 you may not use the Oculus VR Rift SDK except in compliance with the License, 
 which is provided at the time of installation or download, or which 
 otherwise accompanies this software in either electronic or hard copy form.
 
 You may obtain a copy of the License at
 
-http://www.oculusvr.com/licenses/LICENSE-3.1 
+http://www.oculusvr.com/licenses/LICENSE-3.2 
 
 Unless required by applicable law or agreed to in writing, the Oculus VR SDK 
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -37,11 +37,28 @@ namespace OVR { namespace CAPI { namespace D3D_NS {
 void ShaderFill::Set(PrimitiveType prim) const
 {
     Shaders->Set(prim);
-    for(int i = 0; i < 8; i++)
+
+	for(int i = 0; i < 8; ++i)
     {
-        if(Textures[i])
+        if ( VsTextures[i] != NULL )
         {
-            Textures[i]->Set(i);
+		    VsTextures[i]->Set(i, Shader_Vertex);
+        }
+    }
+
+	for(int i = 0; i < 8; ++i)
+    {
+        if ( CsTextures[i] != NULL )
+        {
+		    CsTextures[i]->Set(i, Shader_Compute);
+        }
+    }
+
+	for(int i = 0; i < 8; ++i)
+    {
+        if ( PsTextures[i] != NULL )
+        {
+		    PsTextures[i]->Set(i, Shader_Fragment);
         }
     }
 }
@@ -54,7 +71,7 @@ Buffer::~Buffer()
 {
 }
 
-bool Buffer::Data(int use, const void *buffer, size_t size)
+bool Buffer::Data(int use, const void *buffer, size_t size, int computeBufferStride /*=-1*/)
 {
     if (D3DBuffer && Size >= size)
     {
@@ -73,6 +90,7 @@ bool Buffer::Data(int use, const void *buffer, size_t size)
         }
         else
         {
+            OVR_ASSERT (!(use & Buffer_ReadOnly));
             pParams->pContext->UpdateSubresource(D3DBuffer, 0, NULL, buffer, 0, 0);
             return true;
         }
@@ -82,8 +100,12 @@ bool Buffer::Data(int use, const void *buffer, size_t size)
         D3DBuffer = NULL;
         Size = 0;
         Use = 0;
-        Dynamic = 0;
+        Dynamic = false;
     }
+    D3DSrv = NULL;
+#if (OVR_D3D_VERSION >= 11)
+    D3DUav = NULL;
+#endif
 
     D3D1X_(BUFFER_DESC) desc;
     memset(&desc, 0, sizeof(desc));
@@ -96,7 +118,7 @@ bool Buffer::Data(int use, const void *buffer, size_t size)
     {
         desc.Usage = D3D1X_(USAGE_DYNAMIC);
         desc.CPUAccessFlags = D3D1X_(CPU_ACCESS_WRITE);
-        Dynamic = 1;
+        Dynamic = true;
     }
 
     switch(use & Buffer_TypeMask)
@@ -105,7 +127,32 @@ bool Buffer::Data(int use, const void *buffer, size_t size)
     case Buffer_Index:   desc.BindFlags = D3D1X_(BIND_INDEX_BUFFER);  break;
     case Buffer_Uniform:
         desc.BindFlags = D3D1X_(BIND_CONSTANT_BUFFER);
-        size += ((size + 15) & ~15) - size;
+        size = ((size + 15) & ~15);
+        break;
+    case Buffer_Compute:
+#if (OVR_D3D_VERSION >= 11)
+        // There's actually a bunch of options for buffers bound to a CS.
+        // Right now this is the most appropriate general-purpose one. Add more as needed.
+
+        // NOTE - if you want D3D1X_(CPU_ACCESS_WRITE), it MUST be either D3D1X_(USAGE_DYNAMIC) or D3D1X_(USAGE_STAGING).
+        // TODO: we want a resource that is rarely written to, in which case we'd need two surfaces - one a STAGING
+        // that the CPU writes to, and one a DEFAULT, and we CopyResource from one to the other. Hassle!
+        // Setting it as D3D1X_(USAGE_DYNAMIC) will get the job done for now.
+        // Also for fun - you can't have a D3D1X_(USAGE_DYNAMIC) buffer that is also a D3D1X_(BIND_UNORDERED_ACCESS).
+        OVR_ASSERT ( !(use & Buffer_ReadOnly) );
+        desc.BindFlags = D3D1X_(BIND_SHADER_RESOURCE);
+        desc.Usage     = D3D1X_(USAGE_DYNAMIC);
+        desc.MiscFlags = D3D1X_(RESOURCE_MISC_BUFFER_STRUCTURED);
+        desc.CPUAccessFlags = D3D1X_(CPU_ACCESS_WRITE);
+        OVR_ASSERT ( computeBufferStride > 0 );
+        desc.StructureByteStride = computeBufferStride; // sizeof(DistortionComputePin);
+
+        Dynamic = true;
+        size = ((size + 15) & ~15);
+#else
+        OVR_UNUSED ( computeBufferStride );
+        OVR_ASSERT ( false );  // No compute shaders in DX10
+#endif
         break;
     }
 
@@ -116,14 +163,46 @@ bool Buffer::Data(int use, const void *buffer, size_t size)
     sr.SysMemPitch = 0;
     sr.SysMemSlicePitch = 0;
 
+    D3DBuffer = NULL;
     HRESULT hr = pParams->pDevice->CreateBuffer(&desc, buffer ? &sr : NULL, &D3DBuffer.GetRawRef());
     if (SUCCEEDED(hr))
     {
         Use = use;
         Size = desc.ByteWidth;
-        return 1;
     }
-    return 0;
+    else
+    {
+        OVR_ASSERT ( false );
+        return false;
+    }
+
+    if ( ( use & Buffer_TypeMask ) == Buffer_Compute )
+    {
+        HRESULT hres = pParams->pDevice->CreateShaderResourceView ( D3DBuffer, NULL, &D3DSrv.GetRawRef() );
+        if ( SUCCEEDED(hres) )
+        {
+#if (OVR_D3D_VERSION >= 11)
+#if 0           // Right now we do NOT ask for UAV access (see flags above).
+            hres = Ren->Device->CreateUnorderedAccessView ( D3DBuffer, NULL, &D3DUav.GetRawRef() );
+            if ( SUCCEEDED(hres) )
+            {
+                // All went well.
+            }
+#endif
+#endif
+        }
+
+        if ( !SUCCEEDED(hres) )
+        {
+            OVR_ASSERT ( false );
+            Use = 0;
+            Size = 0;
+            return false;
+        }
+    }
+
+    return true;
+
 }
 
 void*  Buffer::Map(size_t start, size_t size, int flags)
@@ -170,6 +249,12 @@ template<> bool ShaderImpl<Shader_Pixel, ID3D1xPixelShader>::Load(void* shader, 
 {
     return SUCCEEDED(pParams->pDevice->CreatePixelShader(shader, size  D3D11_COMMA_0, &D3DShader));
 }
+#if (OVR_D3D_VERSION>=11)
+template<> bool ShaderImpl<Shader_Compute, ID3D1xComputeShader>::Load(void* shader, size_t size)
+{
+    return SUCCEEDED(pParams->pDevice->CreateComputeShader(shader, size  D3D11_COMMA_0, &D3DShader));
+}
+#endif
 
 template<> void ShaderImpl<Shader_Vertex, ID3D1xVertexShader>::Set(PrimitiveType) const
 {
@@ -179,6 +264,12 @@ template<> void ShaderImpl<Shader_Pixel, ID3D1xPixelShader>::Set(PrimitiveType) 
 {
     pParams->pContext->PSSetShader(D3DShader D3D11_COMMA_0 D3D11_COMMA_0 ) ;
 }
+#if (OVR_D3D_VERSION>=11)
+template<> void ShaderImpl<Shader_Compute, ID3D1xComputeShader>::Set(PrimitiveType) const
+{
+    pParams->pContext->CSSetShader(D3DShader D3D11_COMMA_0 D3D11_COMMA_0 ) ;
+}
+#endif
 
 template<> void ShaderImpl<Shader_Vertex, ID3D1xVertexShader>::SetUniformBuffer(Buffer* buffer, int i)
 {
@@ -188,19 +279,36 @@ template<> void ShaderImpl<Shader_Pixel, ID3D1xPixelShader>::SetUniformBuffer(Bu
 {
     pParams->pContext->PSSetConstantBuffers(i, 1, &((Buffer*)buffer)->D3DBuffer.GetRawRef());
 }
-
+#if (OVR_D3D_VERSION>=11)
+template<> void ShaderImpl<Shader_Compute, ID3D1xComputeShader>::SetUniformBuffer(Buffer* buffer, int i)
+{
+    pParams->pContext->CSSetConstantBuffers(i, 1, &((Buffer*)buffer)->D3DBuffer.GetRawRef());
+}
+#endif
 
 //-------------------------------------------------------------------------------------
 // ***** Shader Base
 
-ShaderBase::ShaderBase(RenderParams* rp, ShaderStage stage)
-    : Shader(stage), pParams(rp), UniformData(0)
+ShaderBase::ShaderBase(RenderParams* rp, ShaderStage stage) :
+    Shader(stage),
+    pParams(rp),
+    UniformData(NULL),
+    UniformsSize(0),
+    UniformRefl(NULL),
+    UniformReflSize(0)
 {
 }
+
 ShaderBase::~ShaderBase()
 {
-    if (UniformData)    
-        OVR_FREE(UniformData);    
+    if (UniformData)
+    {
+        OVR_FREE(UniformData);
+        UniformData = NULL;
+    }
+
+    // UniformRefl does not need to be freed
+    UniformRefl = NULL;
 }
 
 bool ShaderBase::SetUniform(const char* name, int n, const float* v)
@@ -292,7 +400,16 @@ void Texture::Set(int slot, ShaderStage stage) const
 
     case Shader_Vertex:
         pParams->pContext->VSSetShaderResources(slot, 1, &texSv);
+        pParams->pContext->VSSetSamplers(slot, 1, &Sampler.GetRawRef());
         break;
+
+#if (OVR_D3D_VERSION >= 11)
+    case Shader_Compute:
+        pParams->pContext->CSSetShaderResources(slot, 1, &texSv);
+        pParams->pContext->CSSetSamplers(slot, 1, &Sampler.GetRawRef());
+        break;
+#endif
+    default: OVR_ASSERT ( false ); break;
     }
 }
 
