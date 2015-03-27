@@ -29,9 +29,11 @@ limitations under the License.
 #include "OVR_Threads.h"
 #include "OVR_Timer.h"
 #include "../Displays/OVR_Display.h"
+#if !defined(HEADLESS_APP)
 #ifdef OVR_OS_WIN32
 #include "../Displays/OVR_Win32_ShimFunctions.h"
 #endif
+#endif /* !defined(HEADLESS_APP) */
 
 namespace OVR {
 
@@ -55,6 +57,7 @@ void SystemSingletonInternal::PushDestroyCallbacks()
 
 void System::DirectDisplayInitialize()
 {
+#if !defined(HEADLESS_APP)
 #ifdef OVR_OS_WIN32
 	// Set up display code for Windows
 	Win32::DisplayShim::GetInstance();
@@ -72,6 +75,7 @@ void System::DirectDisplayInitialize()
 	
     DisplayShimInitialized = Win32::DisplayShim::GetInstance().Initialize(anyExtendedRifts);
 #endif
+#endif /* !defined(HEADLESS_APP) */
 }
 
 bool System::DirectDisplayEnabled()
@@ -100,9 +104,11 @@ void System::Destroy()
 {    
     if (Allocator::GetInstance())
     {
+#if !defined(HEADLESS_APP)
 #ifdef OVR_OS_WIN32
 		Win32::DisplayShim::GetInstance().Shutdown();
 #endif
+#endif /* !defined(HEADLESS_APP) */
 
 		// Invoke all of the post-finish callbacks (normal case)
         for (SystemSingletonInternal *listener = SystemShutdownListenerStack; listener; listener = listener->NextSingleton)

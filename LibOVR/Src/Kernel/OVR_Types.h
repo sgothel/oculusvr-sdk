@@ -587,7 +587,7 @@ struct OVR_GUID
 		#include <stdlib.h>
 		#define OVR_ASSERT_M(p, message) do { if (!(p))  { OVR_DEBUG_BREAK; exit(0); } } while(0)
 		#define OVR_ASSERT(p)            do { if (!(p))  { OVR_DEBUG_BREAK; exit(0); } } while(0)
-	#else
+    #elif !defined(HEADLESS_APP)
 		// void OVR_ASSERT_M(bool expression, const char message);
 		// Note: The expresion below is expanded into all usage of this assertion macro. 
 		// We should try to minimize the size of the expanded code to the extent possible.
@@ -599,6 +599,30 @@ struct OVR_GUID
 				OVRAssertionHandler ovrAssertUserHandler = OVR::GetAssertionHandler(&ovrAssertUserParam); \
 																							              \
 				if(ovrAssertUserHandler && !OVRIsDebuggerPresent())                                       \
+				{                                                                                         \
+					ovrAssertUserHandler(ovrAssertUserParam, "Assertion failure", message);               \
+				}                                                                                         \
+				else                                                                                      \
+				{                                                                                         \
+					OVR_DEBUG_BREAK;                                                                      \
+				}                                                                                         \
+			}                                                                                             \
+		} while(0)
+
+		// void OVR_ASSERT(bool expression);
+		#define OVR_ASSERT(p) OVR_ASSERT_M((p), (#p))
+	#else
+		// void OVR_ASSERT_M(bool expression, const char message);
+		// Note: The expresion below is expanded into all usage of this assertion macro. 
+		// We should try to minimize the size of the expanded code to the extent possible.
+		#define OVR_ASSERT_M(p, message) do                                                               \
+		{                                                                                                 \
+			if (!(p))                                                                                     \
+			{                                                                                             \
+				intptr_t ovrAssertUserParam;                                                              \
+				OVRAssertionHandler ovrAssertUserHandler = OVR::GetAssertionHandler(&ovrAssertUserParam); \
+																							              \
+				if(ovrAssertUserHandler)                                                                  \
 				{                                                                                         \
 					ovrAssertUserHandler(ovrAssertUserParam, "Assertion failure", message);               \
 				}                                                                                         \

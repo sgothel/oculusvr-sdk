@@ -81,6 +81,8 @@ typedef BOOL     (WINAPI *WinGetModuleHandleExW)( DWORD, LPCWSTR, HMODULE* );
 typedef void*	 (WINAPI *WinDirect3DCreate9)(UINT SDKVersion);
 typedef HRESULT  (WINAPI *WinDirect3DCreate9Ex)(UINT SDKVersion, void** aDevice);
 
+#if !defined(HEADLESS_APP)
+
 // Overridden DXGI entry points
 typedef HRESULT (WINAPI *WinCreateDXGIFactory)(
 	__in   REFIID riid,
@@ -97,6 +99,26 @@ typedef HRESULT (WINAPI *WinCreateDXGIFactory2)(
 	__in   const IID &riid,
 	__out  void **ppFactory
 	);
+
+#else /* !defined(HEADLESS_APP) */
+
+typedef HRESULT (WINAPI *WinCreateDXGIFactory)(
+	void ** riid,
+	void **ppFactory
+	);
+
+typedef HRESULT (WINAPI *WinCreateDXGIFactory1)(
+	void ** riid,
+	void **ppFactory
+	);
+
+typedef HRESULT (WINAPI *WinCreateDXGIFactory2)(
+	UINT flags,
+	const IID &riid,
+	void **ppFactory
+	);
+
+#endif /*  !defined(HEADLESS_APP) */
 
 // Application usermode callbacks from usermode driver. These 
 // functions are all provided by the calling application that uses

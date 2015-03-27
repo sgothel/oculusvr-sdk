@@ -27,9 +27,11 @@ limitations under the License.
 #include "CAPI_HMDState.h"
 #include "../OVR_Profile.h"
 #include "../Service/Service_NetClient.h"
+#if !defined(HEADLESS_APP)
 #ifdef OVR_OS_WIN32
 #include "../Displays/OVR_Win32_ShimFunctions.h"
 #endif
+#endif /* !defined(HEADLESS_APP) */
 
 
 namespace OVR { namespace CAPI {
@@ -66,7 +68,9 @@ HMDState::HMDState(const OVR::Service::HMDNetworkInfo& netInfo,
     TimeManager(true),
     RenderState(),
     pRenderer(),
+#if !defined(HEADLESS_APP)
     pHSWDisplay(),
+#endif /* !defined(HEADLESS_APP) */
     LastFrameTimeSeconds(0.),
     LastGetFrameTimeSeconds(0.),
   //LastGetStringValue(),
@@ -102,7 +106,9 @@ HMDState::HMDState(const OVR::HMDInfo& hmdInfo, Profile* profile) :
     TimeManager(true),
     RenderState(),
     pRenderer(),
+#if !defined(HEADLESS_APP)
     pHSWDisplay(),
+#endif /* !defined(HEADLESS_APP) */
     LastFrameTimeSeconds(0.),
     LastGetFrameTimeSeconds(0.),
   //LastGetStringValue(),
@@ -170,12 +176,14 @@ void HMDState::sharedInit(Profile* profile)
     BeginFrameThreadId = 0;
     BeginFrameTimingCalled = false;
 
+#if !defined(HEADLESS_APP)
     // Construct the HSWDisplay. We will later reconstruct it with a specific ovrRenderAPI type if the application starts using SDK-based rendering.
     if(!pHSWDisplay)
     {
         pHSWDisplay = *OVR::CAPI::HSWDisplay::Factory(ovrRenderAPI_None, pHmdDesc, RenderState);
         pHSWDisplay->Enable(pProfile->GetBoolValue("HSW", true));
     }
+#endif /* !defined(HEADLESS_APP) */
 }
 
 static Vector3f GetNeckModelFromProfile(Profile* profile)
@@ -264,6 +272,7 @@ HMDState* HMDState::CreateHMDState(NetClient* client, const HMDNetworkInfo& netI
         return NULL;
     }
 
+#if !defined(HEADLESS_APP)
 #ifdef OVR_OS_WIN32
     OVR_DEBUG_LOG(("Setting up display shim"));
 
@@ -271,6 +280,7 @@ HMDState* HMDState::CreateHMDState(NetClient* client, const HMDNetworkInfo& netI
     // so that this will happen before the D3D display object is created.
     Win32::DisplayShim::GetInstance().Update(&hinfo.ShimInfo);
 #endif
+#endif /* !defined(HEADLESS_APP) */
 
     Ptr<Profile> pDefaultProfile = *ProfileManager::GetInstance()->GetDefaultUserProfile(&hinfo);
     OVR_DEBUG_LOG(("Using profile %s", pDefaultProfile->GetValue(OVR_KEY_USER)));
@@ -377,6 +387,7 @@ void HMDState::SetEnabledHmdCaps(unsigned hmdCaps)
 
     if ((EnabledHmdCaps ^ hmdCaps) & ovrHmdCap_NoMirrorToWindow)
     {
+#if !defined(HEADLESS_APP)
 #ifdef OVR_OS_WIN32
         Win32::DisplayShim::GetInstance().UseMirroring = (hmdCaps & ovrHmdCap_NoMirrorToWindow)  ?
                                                          false : true;
@@ -385,6 +396,7 @@ void HMDState::SetEnabledHmdCaps(unsigned hmdCaps)
             ::InvalidateRect((HWND)pWindow, 0, true);
         }
 #endif
+#endif /* !defined(HEADLESS_APP) */
     }
 
     // TBD: Should this include be only the rendering flags? Otherwise, bits that failed
@@ -660,11 +672,13 @@ bool HMDState::ConfigureRendering(ovrEyeRenderDesc eyeRenderDescOut[2],
     // null -> shut down.
     if (!apiConfig)
     {
+#if !defined(HEADLESS_APP)
         if (pHSWDisplay)
         {
             pHSWDisplay->Shutdown();
             pHSWDisplay.Clear();
         }
+#endif /* !defined(HEADLESS_APP) */
 
         if (pRenderer)
             pRenderer.Clear();        
@@ -676,11 +690,13 @@ bool HMDState::ConfigureRendering(ovrEyeRenderDesc eyeRenderDescOut[2],
         (apiConfig->Header.API != pRenderer->GetRenderAPI()))
     {
         // Shutdown old renderer.
+#if !defined(HEADLESS_APP)
         if (pHSWDisplay)
         {
             pHSWDisplay->Shutdown();
             pHSWDisplay.Clear();
         }
+#endif /* !defined(HEADLESS_APP) */
 
         if (pRenderer)
             pRenderer.Clear();
@@ -718,6 +734,7 @@ bool HMDState::ConfigureRendering(ovrEyeRenderDesc eyeRenderDescOut[2],
         return false;
     }    
 
+#if !defined(HEADLESS_APP)
     // Setup the Health and Safety Warning display system.
     if(pHSWDisplay && (pHSWDisplay->GetRenderAPIType() != apiConfig->Header.API)) // If we need to reconstruct the HSWDisplay for a different graphics API type, delete the existing display.
     {
@@ -733,6 +750,7 @@ bool HMDState::ConfigureRendering(ovrEyeRenderDesc eyeRenderDescOut[2],
 
     if (pHSWDisplay)
         pHSWDisplay->Initialize(apiConfig); // This is potentially re-initializing it with a new config.
+#endif /* !defined(HEADLESS_APP) */
 
     return true;
 }

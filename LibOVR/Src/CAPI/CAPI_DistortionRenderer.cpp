@@ -26,6 +26,7 @@ limitations under the License.
 
 #include "CAPI_DistortionRenderer.h"
 
+#if !defined(HEADLESS_APP)
 #if defined (OVR_OS_WIN32)
 
 // TBD: Move to separate config file that handles back-ends.
@@ -44,6 +45,7 @@ limitations under the License.
 #endif
 
 #include "GL/CAPI_GL_DistortionRenderer.h"
+#endif /* !defined(HEADLESS_APP) */
 
 namespace OVR { namespace CAPI {
 
@@ -54,6 +56,7 @@ namespace OVR { namespace CAPI {
 
 DistortionRenderer::CreateFunc DistortionRenderer::APICreateRegistry[ovrRenderAPI_Count] =
 {
+#if !defined(HEADLESS_APP)
     0, // None
     &GL::DistortionRenderer::Create,
     0, // Android_GLES
@@ -66,6 +69,9 @@ DistortionRenderer::CreateFunc DistortionRenderer::APICreateRegistry[ovrRenderAP
     0,
     0
 #endif
+#else /* !defined(HEADLESS_APP) */
+    0 // None
+#endif /* !defined(HEADLESS_APP) */
 };
 
 void DistortionRenderer::SetLatencyTestColor(unsigned char* color)

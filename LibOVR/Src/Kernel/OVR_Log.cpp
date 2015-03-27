@@ -397,11 +397,13 @@ void SetAssertionHandler(OVRAssertionHandler assertionHandler, intptr_t userPara
 
 intptr_t DefaultAssertionHandler(intptr_t /*userParameter*/, const char* title, const char* message)
 {
+#if !defined(HEADLESS_APP)
     if(OVRIsDebuggerPresent())
     {
         OVR_DEBUG_BREAK;
     }
     else
+#endif /* !defined(HEADLESS_APP) */
     {
         #if defined(OVR_BUILD_DEBUG)
             // Print a stack trace of all threads.

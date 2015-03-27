@@ -36,7 +36,9 @@ limitations under the License.
 #include "CAPI_LatencyStatistics.h"
 #include "CAPI_HMDRenderState.h"
 #include "CAPI_DistortionRenderer.h"
+#if !defined(HEADLESS_APP)
 #include "CAPI_HSWDisplay.h"
+#endif /* !defined(HEADLESS_APP) */
 
 #include "../Service/Service_NetClient.h"
 #include "../Net/OVR_NetworkTypes.h"
@@ -261,8 +263,10 @@ public:
     HMDRenderState          RenderState;
     Ptr<DistortionRenderer> pRenderer;
 
+#if !defined(HEADLESS_APP)
     // Health and Safety Warning display.
     Ptr<HSWDisplay>         pHSWDisplay;
+#endif /* !defined(HEADLESS_APP) */
 
     // Last timing value reported by BeginFrame.
     double                  LastFrameTimeSeconds;    

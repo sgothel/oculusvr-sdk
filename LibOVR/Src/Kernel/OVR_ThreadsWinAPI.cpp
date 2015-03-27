@@ -1103,7 +1103,7 @@ void Thread::SetThreadName(const char* name, ThreadId threadId)
 
 void Thread::SetCurrentThreadName( const char* name )
 {
-    SetThreadName(name, (ThreadId)::GetCurrentThreadId());
+    SetThreadName(name, (ThreadId)(intptr_t)::GetCurrentThreadId()); // should be: typedef intptr_t ThreadId;
 }
 
 

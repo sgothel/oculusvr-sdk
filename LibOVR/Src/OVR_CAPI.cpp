@@ -40,9 +40,11 @@ limitations under the License.
 #include "Service/Service_NetServer.h"
 #endif
 
+#if !defined(HEADLESS_APP)
 #ifdef OVR_OS_WIN32
 #include "Displays/OVR_Win32_ShimFunctions.h"
 #endif
+#endif /* !defined(HEADLESS_APP) */
 
 
 using namespace OVR;
@@ -252,11 +254,13 @@ static ovrBool CAPI_ovrInitializeCalled = 0;
 
 static OVR::Service::NetClient* CAPI_pNetClient = 0;
 
+#if !defined(HEADLESS_APP)
 OVR_EXPORT ovrBool ovr_InitializeRenderingShim()
 {
     OVR::System::DirectDisplayInitialize();
     return OVR::System::DirectDisplayEnabled();
 }
+#endif /* !defined(HEADLESS_APP) */
 
 OVR_EXPORT ovrBool ovr_Initialize()
 {
@@ -383,6 +387,7 @@ OVR_EXPORT ovrHmd ovrHmd_Create(int index)
     return hmds->pHmdDesc;
 }
 
+#if !defined(HEADLESS_APP)
 
 OVR_EXPORT ovrBool ovrHmd_AttachToWindow( ovrHmd hmd, void* window,
                                          const ovrRecti* destMirrorRect,
@@ -411,6 +416,8 @@ OVR_EXPORT ovrBool ovrHmd_AttachToWindow( ovrHmd hmd, void* window,
     return true;
 }
 
+#endif /* !defined(HEADLESS_APP) */
+
 OVR_EXPORT ovrHmd ovrHmd_CreateDebug(ovrHmdType type)
 {
     if (!CAPI_ovrInitializeCalled)
@@ -434,6 +441,7 @@ OVR_EXPORT void ovrHmd_Destroy(ovrHmd hmddesc)
         ThreadChecker::Scope checkScope(&hmds->RenderAPIThreadChecker, "ovrHmd_Destroy");
     }    
 
+#if !defined(HEADLESS_APP)
 #ifdef OVR_OS_WIN32
     if (hmds->pWindow)
     {
@@ -443,6 +451,7 @@ OVR_EXPORT void ovrHmd_Destroy(ovrHmd hmddesc)
         Win32::DisplayShim::GetInstance().hWindow = (HWND)0;
     }    
 #endif
+#endif /* !defined(HEADLESS_APP) */
 
     delete (HMDState*)hmddesc->Handle;
 }
@@ -552,10 +561,12 @@ OVR_EXPORT ovrTrackingState ovrHmd_GetTrackingState(ovrHmd hmddesc, double absTi
     else
         memset(&result, 0, sizeof(result));
 
+#if !defined(HEADLESS_APP)
 #ifdef OVR_OS_WIN32
         // Set up display code for Windows
         Win32::DisplayShim::GetInstance().Active = (result.StatusFlags & ovrStatus_HmdConnected) != 0;
 #endif
+#endif /* !defined(HEADLESS_APP) */
 
     return result;
 }
@@ -651,6 +662,7 @@ OVR_EXPORT void ovrHmd_EndFrame(ovrHmd hmddesc,
     {
         hmds->pRenderer->SaveGraphicsState();
 
+#if !defined(HEADLESS_APP)
         // See if we need to show the HSWDisplay.
         if (hmds->pHSWDisplay) // Until we know that these are valid, assume any of them can't be.
         {
@@ -663,6 +675,7 @@ OVR_EXPORT void ovrHmd_EndFrame(ovrHmd hmddesc,
                 hmds->pHSWDisplay->Render(ovrEye_Right, &eyeTexture[ovrEye_Right]);
             }
         }
+#endif /* !defined(HEADLESS_APP) */
 
         hmds->pRenderer->EndFrame(true);
         hmds->pRenderer->RestoreGraphicsState();
@@ -683,6 +696,7 @@ OVR_EXPORT void ovrHmd_EndFrame(ovrHmd hmddesc,
 }
 
 
+#if !defined(HEADLESS_APP)
 // Not exposed as part of public API
 OVR_EXPORT void ovrHmd_RegisterPostDistortionCallback(ovrHmd hmddesc, PostDistortionCallback callback)
 {
@@ -694,6 +708,7 @@ OVR_EXPORT void ovrHmd_RegisterPostDistortionCallback(ovrHmd hmddesc, PostDistor
         hmds->pRenderer->RegisterPostDistortionCallback(callback);
     }
 }
+#endif /* !defined(HEADLESS_APP) */
 
 
 
@@ -1042,6 +1057,8 @@ OVR_EXPORT double ovrHmd_GetMeasuredLatencyTest2(ovrHmd hmddesc)
 // ***** Health and Safety Warning Display interface
 //
 
+#if !defined(HEADLESS_APP)
+
 OVR_EXPORT void ovrHmd_GetHSWDisplayState(ovrHmd hmd, ovrHSWDisplayState *hswDisplayState)
 {
     OVR::CAPI::HMDState* pHMDState = (OVR::CAPI::HMDState*)hmd->Handle;
@@ -1070,6 +1087,7 @@ OVR_EXPORT ovrBool ovrHmd_DismissHSWDisplay(ovrHmd hmd)
     return false;
 }
 
+#endif /* !defined(HEADLESS_APP) */
 
 // -----------------------------------------------------------------------------------
 // ***** Property Access

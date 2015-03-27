@@ -425,6 +425,7 @@ typedef struct ovrEyeRenderDesc_
 /// to return portable types such as ovrTexture and ovrRenderAPIConfig.
 typedef enum
 {
+#if !defined(HEADLESS_APP)
     ovrRenderAPI_None,
     ovrRenderAPI_OpenGL,
     ovrRenderAPI_Android_GLES,  // May include extra native window pointers, etc.
@@ -432,6 +433,10 @@ typedef enum
     ovrRenderAPI_D3D10,
     ovrRenderAPI_D3D11,
     ovrRenderAPI_Count
+#else /* !defined(HEADLESS_APP) */
+    ovrRenderAPI_None,
+    ovrRenderAPI_Count
+#endif /* !defined(HEADLESS_APP) */
 } ovrRenderAPIType;
 
 /// Platform-independent part of rendering API-configuration data.
@@ -502,6 +507,7 @@ typedef struct OVR_ALIGNAS(8) ovrTexture_
 extern "C" {
 #endif
 
+#if !defined(HEADLESS_APP)
 // ovr_InitializeRenderingShim initializes the rendering shim appart from everything
 // else in LibOVR. This may be helpful if the application prefers to avoid
 // creating any OVR resources (allocations, service connections, etc) at this point.
@@ -512,6 +518,7 @@ extern "C" {
 // Direct3D or OpenGL initilization is done by applictaion (creation of devices, etc).
 // ovr_Initialize() must still be called after to use the rest of LibOVR APIs.
 OVR_EXPORT ovrBool  ovr_InitializeRenderingShim();
+#endif /* !defined(HEADLESS_APP) */
 
 // Library init/shutdown, must be called around all other OVR code.
 // No other functions calls besides ovr_InitializeRenderingShim are allowed
@@ -544,6 +551,7 @@ OVR_EXPORT ovrHmd   ovrHmd_CreateDebug(ovrHmdType type);
 /// Pass null hmd to get global errors (during create etc).
 OVR_EXPORT const char* ovrHmd_GetLastError(ovrHmd hmd);
 
+#if !defined(HEADLESS_APP)
 /// Platform specific function to specify the application window whose output will be 
 /// displayed on the HMD. Only used if the ovrHmdCap_ExtendDesktop flag is false.
 ///   Windows: SwapChain associated with this window will be displayed on the HMD.
@@ -554,6 +562,7 @@ OVR_EXPORT const char* ovrHmd_GetLastError(ovrHmd hmd);
 OVR_EXPORT ovrBool ovrHmd_AttachToWindow(ovrHmd hmd, void* window,
 										 const ovrRecti* destMirrorRect,
 										 const ovrRecti* sourceRenderTargetRect);
+#endif /* !defined(HEADLESS_APP) */
 
 /// Returns capability bits that are enabled at this time as described by ovrHmdCaps.
 /// Note that this value is different font ovrHmdDesc::HmdCaps, which describes what
@@ -836,6 +845,8 @@ OVR_EXPORT ovrBool      ovrHmd_GetLatencyTest2DrawColor(ovrHmd hmddesc, unsigned
 // ***** Health and Safety Warning Display interface
 //
 
+#if !defined(HEADLESS_APP)
+
 /// Used by ovrhmd_GetHSWDisplayState to report the current display state.
 typedef struct ovrHSWDisplayState_
 {
@@ -885,6 +896,8 @@ OVR_EXPORT void ovrHmd_GetHSWDisplayState(ovrHmd hmd, ovrHSWDisplayState *hasWar
 ///        }
 ///    }
 OVR_EXPORT ovrBool ovrHmd_DismissHSWDisplay(ovrHmd hmd);
+
+#endif /* !defined(HEADLESS_APP) */
 
 /// Get boolean property. Returns first element if property is a boolean array.
 /// Returns defaultValue if property doesn't exist.
