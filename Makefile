@@ -1,82 +1,82 @@
-#############################################################################
-#
-# Filename    : Makefile
-# Content     : Makefile for building linux libovr and OculusWorldDemo
-# Created     : 2013
-# Authors     : Simon Hallam and Peter Giokaris
-# Copyright   : Copyright 2013 OculusVR, Inc. All Rights Reserved
-# Instruction : The g++ compiler and stdndard lib packages need to be 
-#               installed on the system.  Navigate in a shell to the 
-#               directory where this Makefile is located and enter:
-#
-#               make                builds the release versions for the 
-#                                   current architechture
-#               make clean          delete intermediate release object files 
-#                                   and library and executable
-#               make DEBUG=1        builds the debug version for the current
-#                                   architechture
-#               make clean DEBUG=1  deletes intermediate debug object files 
-#                                   and the library and executable
-#
-# Output      : Relative to the directory this Makefile lives in, libraries
-#               and executables are built at the following locations 
-#               depending upon the architechture of the system you are 
-#               running:
-#
-#           ./LibOVR/Lib/Linux/Debug/i386/libovr.a
-#           ./LibOVR/Lib/Linux/Debug/x86_64/libovr.a
-#           ./LibOVR/Lib/Linux/Release/i386/libovr.a
-#           ./LibOVR/Lib/Linux/Release/x86_64/libovr.a
-#           ./Samples/OculusWorldDemo/Release/OculusWorldDemo_i386_Release
-#           ./Samples/OculusWorldDemo/Release/OculusWorldDemo_x86_64_Release
-#           ./Samples/OculusWorldDemo/Release/OculusWorldDemo_i386_Debug
-#           ./Samples/OculusWorldDemo/Release/OculusWorldDemo_x86_64_Debug
-#
-#############################################################################
+include LibOVR/Projects/Linux/LibOVRConfig.mk
 
-####### Detect system architecture
+DESTDIR =
+PREFIX = $(DESTDIR)/usr/local
+BINDIR = $(PREFIX)/bin
+LIBDIR = $(PREFIX)/lib
+INCDIR = $(PREFIX)/include
+SHRDIR = $(PREFIX)/share
 
-SYSARCH       = i386
-ifeq ($(shell uname -m),x86_64)
-SYSARCH       = x86_64
-endif
+CFLAGS += -DLIBDIR=$(LIBDIR) -DSHRDIR=$(SHRDIR)
+CXXFLAGS += -DLIBDIR=$(LIBDIR) -DSHRDIR=$(SHRDIR)
 
-####### Compiler, tools and options
+CC  = gcc
+CXX = g++
 
-CXX           = g++
-LINK          = ar rvs
-DELETEFILE    = rm -f
+all: debug
 
-####### Detect debug or release
+release:
+	CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" $(MAKE) -C Samples/OculusWorldDemo/Projects/Linux -f OculusWorldDemo.mk
 
-DEBUG         = 0
-ifeq ($(DEBUG), 1)
-	RELEASETYPE   = Debug
-else
-	RELEASETYPE   = Release
-endif
-
-####### Paths
-
-LIBOVRPATH    = ./LibOVR
-DEMOPATH      = ./Samples/OculusWorldDemo
-
-####### Files
-
-LIBOVRTARGET  = $(LIBOVRPATH)/Lib/Linux/$(RELEASETYPE)/$(SYSARCH)/libovr.a
-DEMOTARGET    = $(DEMOPATH)/Release/OculusWorldDemo_$(RELEASETYPE)/$(SYSARCH)
-
-####### Rules
-
-all:    $(LIBOVRTARGET) $(DEMOTARGET)
-
-$(DEMOTARGET): $(DEMOPATH)/Makefile
-	$(MAKE) -C $(DEMOPATH) DEBUG=$(DEBUG)
-
-$(LIBOVRTARGET): $(LIBOVRPATH)/Makefile
-	$(MAKE) -C $(LIBOVRPATH) DEBUG=$(DEBUG)
+debug:
+	CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" $(MAKE) -C Samples/OculusWorldDemo/Projects/Linux -f OculusWorldDemo.mk DEBUG=1
 
 clean:
-	$(MAKE) -C $(LIBOVRPATH) clean DEBUG=$(DEBUG)
-	$(MAKE) -C $(DEMOPATH) clean DEBUG=$(DEBUG)
+	$(MAKE) -C Samples/OculusWorldDemo/Projects/Linux -f OculusWorldDemo.mk clean
 
+install: release
+	mkdir -p $(LIBDIR)
+	install LibOVR/Lib/Linux/$(SYSARCH)/Release/libOVR.a $(LIBDIR)
+	install LibOVR/Lib/Linux/$(SYSARCH)/Release/libOVRRT64_$(OVR_PRODUCT_VERSION).so.$(OVR_MAJOR_VERSION) $(LIBDIR)
+	install LibOVR/Lib/Linux/$(SYSARCH)/Release/libOVRRT64_$(OVR_PRODUCT_VERSION).so.$(OVR_MAJOR_VERSION).$(OVR_MINOR_VERSION).$(OVR_PATCH_VERSION) $(LIBDIR)
+
+	mkdir -p $(SHRDIR)/OculusWorldDemo/Assets/Tuscany
+	install Samples/OculusWorldDemo/Assets/Tuscany/* $(SHRDIR)/OculusWorldDemo/Assets/Tuscany
+
+	mkdir -p $(BINDIR)
+	install Service/OVRServer/Bin/Linux/$(SYSARCH)/ReleaseStatic/ovrd $(BINDIR)
+	install Samples/OculusWorldDemo/Bin/$(SYSARCH)/Release/OculusWorldDemo $(BINDIR)
+	install Tools/RiftConfigUtil/Bin/Linux/$(SYSARCH)/ReleaseStatic/RiftConfigUtil $(BINDIR)
+
+	mkdir -p $(INCDIR)/Extras
+	install LibOVR/Include/OVR_CAPI_$(OVR_PRODUCT_VERSION)_$(OVR_MAJOR_VERSION)_$(OVR_MINOR_VERSION).h $(INCDIR)
+	install LibOVR/Include/OVR_CAPI_GL.h $(INCDIR)
+	install LibOVR/Include/OVR_CAPI.h $(INCDIR)
+	install LibOVR/Include/OVR_CAPI_Keys.h $(INCDIR)
+	install LibOVR/Include/OVR_CAPI_Util.h $(INCDIR)
+	install LibOVR/Include/OVR_ErrorCode.h $(INCDIR)
+	install LibOVR/Include/OVR.h $(INCDIR)
+	install LibOVR/Include/OVR_Kernel.h $(INCDIR)
+	install LibOVR/Include/OVR_Version.h $(INCDIR)
+	install LibOVR/Include/Extras/OVR_Math.h $(INCDIR)/Extras
+
+uninstall:
+	rm -vf $(LIBDIR)/libOVR.a
+	rm -vf $(LIBDIR)/libOVRRT64_$(OVR_PRODUCT_VERSION).so.$(OVR_MAJOR_VERSION)
+	rm -vf $(LIBDIR)/libOVRRT64_$(OVR_PRODUCT_VERSION).so.$(OVR_MAJOR_VERSION).$(OVR_MINOR_VERSION).$(OVR_PATCH_VERSION)
+
+	rm -vf $(BINDIR)/ovrd
+	rm -vf $(BINDIR)/OculusWorldDemo
+
+	rm -vf $(SHRDIR)/OculusWorldDemo/Assets/Tuscany/*
+	rm -vfr $(SHRDIR)/OculusWorldDemo/Assets/Tuscany || true
+	rm -vfr $(SHRDIR)/OculusWorldDemo/Assets || true
+	rm -vfr $(SHRDIR)/OculusWorldDemo || true
+	rm -vf $(SHRDIR)/RiftConfigUtil/Resources/DeskScene*.*
+	rm -vfr $(SHRDIR)/RiftConfigUtil/Resources/DeskScene || true
+	rm -vf $(SHRDIR)/RiftConfigUtil/Resources/*.*
+	rm -vfr $(SHRDIR)/RiftConfigUtil/Resources || true
+	rm -vfr $(SHRDIR)/RiftConfigUtil || true
+	rm -vfr $(SHRDIR) || true
+
+	rm -vf $(INCDIR)/OVR_CAPI_$(OVR_PRODUCT_VERSION)_$(OVR_MAJOR_VERSION)_$(OVR_PATCH_VERSION).h
+	rm -vf $(INCDIR)/OVR_CAPI_GL.h
+	rm -vf $(INCDIR)/OVR_CAPI.h
+	rm -vf $(INCDIR)/OVR_CAPI_Keys.h
+	rm -vf $(INCDIR)/OVR_CAPI_Util.h
+	rm -vf $(INCDIR)/OVR_ErrorCode.h
+	rm -vf $(INCDIR)/OVR.h
+	rm -vf $(INCDIR)/OVR_Kernel.h
+	rm -vf $(INCDIR)/OVR_Version.h
+	rm -vf $(INCDIR)/Extras/OVR_Math.h
+	rm -vfr $(INCDIR)/Extras || true

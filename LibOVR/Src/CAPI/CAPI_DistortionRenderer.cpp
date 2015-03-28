@@ -30,17 +30,8 @@ limitations under the License.
 #if defined (OVR_OS_WIN32)
 
 // TBD: Move to separate config file that handles back-ends.
-#define OVR_D3D_VERSION 11
-#include "D3D1X/CAPI_D3D1X_DistortionRenderer.h"
-#undef OVR_D3D_VERSION
-
-#define OVR_D3D_VERSION 10
-#include "D3D1X/CAPI_D3D1X_DistortionRenderer.h"
-#undef OVR_D3D_VERSION
-
-#define OVR_D3D_VERSION 9
+#include "D3D1X/CAPI_D3D11_DistortionRenderer.h"
 #include "D3D9/CAPI_D3D9_DistortionRenderer.h"
-#undef OVR_D3D_VERSION
 
 #endif
 
@@ -48,6 +39,7 @@ limitations under the License.
 #endif /* !defined(HEADLESS_APP) */
 
 namespace OVR { namespace CAPI {
+
 
 //-------------------------------------------------------------------------------------
 // ***** DistortionRenderer
@@ -62,7 +54,7 @@ DistortionRenderer::CreateFunc DistortionRenderer::APICreateRegistry[ovrRenderAP
     0, // Android_GLES
 #if defined (OVR_OS_WIN32)
     &D3D9::DistortionRenderer::Create,
-    &D3D10::DistortionRenderer::Create,
+    0, // D3D10
     &D3D11::DistortionRenderer::Create
 #else
     0,
@@ -73,6 +65,51 @@ DistortionRenderer::CreateFunc DistortionRenderer::APICreateRegistry[ovrRenderAP
     0 // None
 #endif /* !defined(HEADLESS_APP) */
 };
+
+DistortionRenderer::DistortionRenderer() :
+	LastUsedOverdriveTextureIndex(-1),
+    LatencyTestActive(false),
+    LatencyTest2Active(false),
+    RenderAPI(ovrRenderAPI_None),
+    Timing(nullptr),
+    RenderState(nullptr),
+    GfxState(),
+    RegisteredPostDistortionCallback(NULL)
+{
+#ifdef OVR_OS_WIN32
+    timer = CreateWaitableTimer(NULL, TRUE, NULL);
+    OVR_ASSERT(timer != NULL);
+#endif
+
+    // set to invalid values to catch uninit case
+    PositionTimewarpDesc.FarClip               = -1.0f;
+    PositionTimewarpDesc.NearClip              = -1.0f;
+    PositionTimewarpDesc.HmdToEyeViewOffset[0] = Vector3f(MATH_FLOAT_MAXVALUE, MATH_FLOAT_MAXVALUE, MATH_FLOAT_MAXVALUE);
+    PositionTimewarpDesc.HmdToEyeViewOffset[1] = Vector3f(MATH_FLOAT_MAXVALUE, MATH_FLOAT_MAXVALUE, MATH_FLOAT_MAXVALUE);
+}
+
+DistortionRenderer::~DistortionRenderer()
+{
+}
+
+bool DistortionRenderer::Initialize(ovrRenderAPIConfig const* apiConfig,
+                                    Vision::TrackingStateReader* stateReader,
+                                    DistortionTimer* timing,
+                                    HMDRenderState const* renderState)
+{
+    if (!apiConfig || !renderState || !timing || !stateReader)
+    {
+        OVR_ASSERT(false);
+        return false;
+    }
+
+    RenderAPI    = apiConfig->Header.API;
+    SensorReader = stateReader;
+    Timing       = timing;
+    RenderState  = renderState;
+
+    return initializeRenderer(apiConfig);
+}
 
 void DistortionRenderer::SetLatencyTestColor(unsigned char* color)
 {
@@ -159,5 +196,5 @@ double DistortionRenderer::WaitTillTime(double absTime)
     return newTime - initialTime;
 }
 
-}} // namespace OVR::CAPI
 
+}} // namespace OVR::CAPI
