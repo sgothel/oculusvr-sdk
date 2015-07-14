@@ -146,6 +146,7 @@ HMDState::HMDState(HMDInfo const & hmdInfo,
     {
         pHSWDisplay = *OVR::CAPI::HSWDisplay::Factory(ovrRenderAPI_None, pHmdDesc, RenderState);
     }
+#endif /* !defined(HEADLESS_APP) */
 
     RenderIMUTimeSeconds = 0.;
 
@@ -173,7 +174,6 @@ HMDState::~HMDState()
         OVR_FREE(pHmdDesc);
         pHmdDesc = nullptr;
     }
-#endif /* !defined(HEADLESS_APP) */
 }
 
 bool HMDState::InitializeSharedState()
@@ -950,13 +950,18 @@ bool HMDState::ConfigureRendering(ovrEyeRenderDesc eyeRenderDescOut[2],
 
     if (!pRenderer)
     {
+#if !defined(HEADLESS_APP)
         pRenderer = *DistortionRenderer::APICreateRegistry
                         [apiConfig->Header.API]();
+#endif /* !defined(HEADLESS_APP) */
     }
 
-    if (!pRenderer ||
-        !pRenderer->Initialize(apiConfig, &TheTrackingStateReader,
-                               &TimewarpTimer, &RenderState))
+    if (!pRenderer 
+#if !defined(HEADLESS_APP)
+        || !pRenderer->Initialize(apiConfig, &TheTrackingStateReader,
+                                  &TimewarpTimer, &RenderState)
+#endif /* !defined(HEADLESS_APP) */
+       )
     {
         RenderingConfigured = false;
         return false;

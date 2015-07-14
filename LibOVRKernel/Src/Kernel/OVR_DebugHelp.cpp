@@ -21,6 +21,9 @@ limitations under the License.
 ************************************************************************************/
 
 #include "OVR_DebugHelp.h"
+
+#if !defined(HEADLESS_APP)
+
 #include "OVR_Types.h"
 #include "OVR_UTF8Util.h"
 #include "OVR_Atomic.h"
@@ -4099,3 +4102,69 @@ int GUIExceptionListener::HandleException(uintptr_t userValue,
 
 
 OVR_RESTORE_MSVC_WARNING()
+
+#else /* !defined(HEADLESS_APP) */
+
+namespace OVR {
+    // Exits the process with the given exit code.
+    void ExitProcess(intptr_t processReturnValue)
+    {
+        exit((int)processReturnValue);
+    }
+    bool OVRIsDebuggerPresent()
+    {
+        return false;
+    }
+    void ExceptionHandler::ReportDeadlock(const char* threadName,
+                                          const char* organizationName,
+                                          const char* applicationName)
+    {
+    }
+
+
+    bool SymbolLookup::Initialize()
+    {
+        return true;
+    }
+
+    bool SymbolLookup::IsInitialized()
+    {
+        return true;
+    }
+
+    void SymbolLookup::Shutdown()
+    {
+    }
+
+    bool SymbolLookup::Refresh()
+    {
+        return true;
+    }
+
+    size_t SymbolLookup::GetBacktrace(void* addressArray[], size_t addressArrayCapacity, size_t skipCount, void* platformThreadContext, OVR::ThreadSysId threadSysIdHelp) 
+    {
+        return 0;
+    }
+    bool SymbolLookup::LookupSymbol(uint64_t address, SymbolInfo& symbolInfo)
+    {
+        return false;
+    }
+    bool SymbolLookup::LookupSymbols(uint64_t* addressArray, SymbolInfo* pSymbolInfoArray, size_t arraySize)
+    {
+        return false;
+    }
+    SymbolLookup::SymbolLookup() { }
+    SymbolLookup::~SymbolLookup() { }
+    bool SymbolLookup::ReportThreadCallstacks(OVR::String& sOutput, size_t skipCount)
+    {
+        sOutput.Clear();
+        return true;
+    }
+    bool SymbolLookup::ReportModuleInformation(OVR::String& sOutput)
+    {
+        sOutput.Clear();
+        return true;
+    }
+} // namespace OVR
+
+#endif /* !defined(HEADLESS_APP) */

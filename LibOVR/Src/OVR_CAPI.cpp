@@ -695,7 +695,12 @@ OVR_PUBLIC_FUNCTION(void) ovrHmd_EndFrame(ovrHmd hmddesc,
     hmds->checkBeginFrameScope("ovrHmd_EndFrame");
     ThreadChecker::Scope checkScope(&hmds->RenderAPIThreadChecker, "ovrHmd_EndFrame");  
     
-    hmds->pRenderer->SetLatencyTestColor(hmds->LatencyTestActive ? hmds->LatencyTestDrawColor : nullptr);
+#if !defined(HEADLESS_APP)
+    if (hmds->pRenderer)
+    {
+        hmds->pRenderer->SetLatencyTestColor(hmds->LatencyTestActive ? hmds->LatencyTestDrawColor : nullptr);
+    }
+#endif /* !defined(HEADLESS_APP) */
 
     ovrHmd_GetLatencyTest2DrawColor(hmddesc, nullptr); // We don't actually need to draw color, so send nullptr
     
@@ -1111,13 +1116,19 @@ OVR_PUBLIC_FUNCTION(ovrBool) ovrHmd_GetLatencyTest2DrawColor(ovrHmd hmddesc, uns
             rgbColorOut[2] = hmds->LatencyTest2DrawColor[2];
         }
 
-        if (hmds->pRenderer)
+#if !defined(HEADLESS_APP)
+        if (hmds->pRenderer) {
             hmds->pRenderer->SetLatencyTest2Color(hmds->LatencyTest2DrawColor);
+        }
+#endif /* !defined(HEADLESS_APP) */
     }
     else
     {
-        if (hmds->pRenderer)
+#if !defined(HEADLESS_APP)
+        if (hmds->pRenderer) {
             hmds->pRenderer->SetLatencyTest2Color(nullptr);
+        }
+#endif /* !defined(HEADLESS_APP) */
     }
 
     return dk2LatencyTest ? ovrTrue : ovrFalse;
