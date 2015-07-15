@@ -31,6 +31,10 @@ limitations under the License.
 #include "OVR_Socket.h"
 #include "OVR_BitStream.h"
 
+#if defined(_WINSOCKAPI_) && !defined(OVR_CC_MSVC) && !defined(_WINSOCK2API_)
+/** Silent warning using mingw64, _WINSOCKAPI_ is disabled in ./LibOVRKernel/Src/Kernel/OVR_Win32_IncludeWindows.h */
+#undef _WINSOCKAPI_
+#endif /* defined(_WINSOCKAPI_) && !defined(OVR_CC_MSVC) && !defined(_WINSOCK2API_) */
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #include "Kernel/OVR_Win32_IncludeWindows.h"

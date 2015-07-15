@@ -272,7 +272,7 @@ OVR_PUBLIC_FUNCTION(ovrBool) ovr_Initialize(ovrInitParams const* params)
         goto Abort;
     }
 
-#if defined(OVR_OS_WIN32)
+#if defined(OVR_OS_WIN32) && !defined(HEADLESS_APP)
     // Older than Windows 7 SP1?
     if (!IsWindows7SP1OrGreater())
     {

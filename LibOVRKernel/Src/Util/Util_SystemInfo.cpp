@@ -34,6 +34,11 @@ limitations under the License.
 #include <sys/utsname.h>
 #endif
 
+#if defined(OVR_OS_WIN32) && !defined(OVR_CC_MSVC)
+// mingw64 .. for __cpuid(..)
+#include <intrin.h>
+#endif /* defined(OVR_OS_WIN32) && !defined(OVR_CC_MSVC) */
+
 /*
 // Disabled, can't link RiftConfigUtil
 #ifdef OVR_OS_WIN32
@@ -149,7 +154,6 @@ const char * GetProcessInfo()
 }
 #ifdef OVR_OS_WIN32
 
-
 String OSVersionAsString()
 {
     return GetSystemFileVersionString("\\kernel32.dll");
@@ -257,12 +261,22 @@ String GetProcessorInfo()
     char brand[0x40] = {};
     int cpui[4] = { -1 };
 
+#if defined(OVR_CC_MSVC)
     __cpuidex(cpui, 0x80000002, 0);
+#else
+    // mingw64 ..
+    __cpuid(cpui, 0x80000002);
+#endif
 
     //unsigned int blocks = cpui[0];
     for (int i = 0; i <= 2; ++i)
     {
+#if defined(OVR_CC_MSVC)
         __cpuidex(cpui, 0x80000002 + i, 0);
+#else
+        // mingw64 ..
+        __cpuid(cpui, 0x80000002 + i);
+#endif
         *reinterpret_cast<int*>(brand + i * 16) = cpui[0];
         *reinterpret_cast<int*>(brand + 4 + i * 16) = cpui[1];
         *reinterpret_cast<int*>(brand + 8 + i * 16) = cpui[2];

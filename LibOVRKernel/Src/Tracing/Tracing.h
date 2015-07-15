@@ -32,7 +32,7 @@ limitations under the License.
 // ***** OVR_ENABLE_ETW_TRACING definition (XXX default to on for windows builds?)
 //
 
-#ifdef OVR_OS_WIN32
+#if defined(OVR_OS_WIN32) && defined(OVR_CC_MSVC)
 #define OVR_ENABLE_ETW_TRACING
 #endif
 

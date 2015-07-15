@@ -371,10 +371,12 @@ ovrTrackingState HMDState::PredictedTrackingState(double absTime, void*)
         ss.StatusFlags = 0;
     }
 
+#if !defined(HEADLESS_APP)
 #ifdef OVR_OS_WIN32
     // Set up display code for Windows
     Win32::DisplayShim::GetInstance().Active = (ss.StatusFlags & ovrStatus_HmdConnected) != 0;
 #endif
+#endif /* !defined(HEADLESS_APP) */
 
 
     return ss;

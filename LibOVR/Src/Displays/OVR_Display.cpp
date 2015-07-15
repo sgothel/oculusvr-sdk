@@ -45,6 +45,25 @@ void Display::SetDirectDisplayInitialized(bool initialized)
     DirectDisplayInitialized = initialized;
 }
 
+#if defined(HEADLESS_APP)
+
+bool Display::Initialize()
+{
+    return true;
+}
+
+void Display::Shutdown()
+{
+}
+
+bool Display::InCompatibilityMode( bool displaySearch )
+{
+	OVR_UNUSED( displaySearch );
+    return true;
+}
+
+
+#endif /* defined(HEADLESS_APP) */
 
 //-----------------------------------------------------------------------------
 // EDID Parsing
