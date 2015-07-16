@@ -35,6 +35,12 @@ limitations under the License.
 // For _beginthreadex / _endtheadex
 #include <process.h>
 
+#if !defined(OVR_CC_MSVC)
+// mingw64: add definition of MemoryBarrier() and _mm_mfence() .. and the like
+#include <intrin.h>
+#include <winnt.h>
+#endif /* !defined(OVR_CC_MSVC) */
+
 namespace OVR {
 
 
@@ -1148,4 +1154,4 @@ ThreadId GetCurrentThreadId()
 
 } // OVR
 
-#endif
+#endif /* OVR_ENABLE_THREADS */

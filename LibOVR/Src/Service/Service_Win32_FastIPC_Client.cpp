@@ -26,6 +26,12 @@ limitations under the License.
 
 #include "Service_Win32_FastIPC_Client.h"
 
+#if !defined(OVR_CC_MSVC)
+// mingw64: add definition of MemoryBarrier() and _mm_mfence() .. and the like
+#include <intrin.h>
+#include <winnt.h>
+#endif /* !defined(OVR_CC_MSVC) */
+
 namespace OVR { namespace Service { namespace Win32 {
 
 using namespace OVR::Net;
