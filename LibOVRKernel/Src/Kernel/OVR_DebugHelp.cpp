@@ -4155,6 +4155,10 @@ namespace OVR {
     }
     SymbolLookup::SymbolLookup() { }
     SymbolLookup::~SymbolLookup() { }
+    bool SymbolLookup::ReportThreadCallstack(OVR::String& sOutput, size_t skipCount, ThreadSysId threadSysId) {
+        sOutput.Clear();
+        return false;
+    }
     bool SymbolLookup::ReportThreadCallstacks(OVR::String& sOutput, size_t skipCount)
     {
         sOutput.Clear();
