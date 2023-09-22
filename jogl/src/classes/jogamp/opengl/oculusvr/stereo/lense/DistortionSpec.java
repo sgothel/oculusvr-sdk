@@ -87,8 +87,8 @@
  */
 package jogamp.opengl.oculusvr.stereo.lense;
 
+import com.jogamp.math.VectorUtil;
 import com.jogamp.nativewindow.util.DimensionImmutable;
-import com.jogamp.opengl.math.VectorUtil;
 import com.jogamp.opengl.util.stereo.generic.GenericStereoDeviceConfig;
 
 public class DistortionSpec {

@@ -91,8 +91,8 @@ import jogamp.opengl.util.stereo.DistortionMesh;
 import jogamp.opengl.util.stereo.ScaleAndOffset2D;
 import jogamp.opengl.util.stereo.DistortionMesh.DistortionVertex;
 
-import com.jogamp.opengl.math.FloatUtil;
-import com.jogamp.opengl.math.VectorUtil;
+import com.jogamp.math.FloatUtil;
+import com.jogamp.math.VectorUtil;
 import com.jogamp.opengl.util.stereo.EyeParameter;
 import com.jogamp.opengl.util.stereo.generic.GenericStereoDeviceConfig;
 
